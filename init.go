@@ -9,7 +9,7 @@ import (
 
 //TaskBucket works as a bucket implementation for tasks pool
 type TaskBucket interface {
-	Fill(ctx context.Context, taskType TaskType, id string, data interface{}, e Executor) error
+	Fill(ctx context.Context, taskType TaskType, id string, data interface{}) error
 	Drain(ctx context.Context, id string) error
 	removeTask(id string) error
 	getMapLength() int
@@ -25,20 +25,23 @@ type Executor interface {
 
 //taskBucketImpl task bucket object holder and methods
 type taskBucketImpl struct {
-	mux    sync.Mutex
-	tasks  map[string]task
-	config *BucketConfig
+	mux      sync.Mutex
+	tasks    map[string]task
+	config   *BucketConfig
+	executor Executor
 }
 
 //NewTaskBucket creates new task bucket
 //args:
 //	cfg: configuration of task bucket
+//	executor: the executor handler
 //returns:
 //	task bucket
-func NewTaskBucket(cfg *BucketConfig) TaskBucket {
+func NewTaskBucket(cfg *BucketConfig, executor Executor) TaskBucket {
 	return &taskBucketImpl{
-		tasks:  make(map[string]task, cfg.MaxBucket),
-		config: cfg,
+		tasks:    make(map[string]task, cfg.MaxBucket),
+		config:   cfg,
+		executor: executor,
 	}
 }
 
@@ -47,10 +50,9 @@ func NewTaskBucket(cfg *BucketConfig) TaskBucket {
 //	ctx: context passed
 //	tt: task type
 //	id: identity of the task
-//	e: the task executor job
 //returns:
 //	fill operation error
-func (tb *taskBucketImpl) Fill(ctx context.Context, tt TaskType, id string, data interface{}, e Executor) error {
+func (tb *taskBucketImpl) Fill(ctx context.Context, tt TaskType, id string, data interface{}) error {
 	var isFull bool
 	tb.mux.Lock()
 	isFull = len(tb.tasks) > tb.config.MaxBucket-1
@@ -59,12 +61,12 @@ func (tb *taskBucketImpl) Fill(ctx context.Context, tt TaskType, id string, data
 		return fmt.Errorf("unable to fill bucket for task=%s, max=%d", id, tb.config.MaxBucket)
 	}
 	//prepare the tax
-	task := newTask(tt, id, tb.config, e, data, tb)
+	task := newTask(tt, id, tb.config, data, tb)
 	tb.mux.Lock()
 	tb.tasks[id] = task
 	tb.mux.Unlock()
 	//run the task: go routine
-	go task.run(ctx)
+	go task.run(ctx, tb.executor)
 	return nil
 }
 

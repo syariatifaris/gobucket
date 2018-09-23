@@ -17,8 +17,8 @@ func main() {
 		LifeSpan:  time.Second * 2,
 		MaxBucket: 1024,
 		Verbose:   true,
-	})
-	total := 1000
+	}, new(sampleExecutor))
+	total := 10
 	done := make(chan bool)
 	var wg sync.WaitGroup
 	for i := 0; i < total; i++ {
@@ -32,7 +32,7 @@ func main() {
 				ID:   1,
 				Name: "Johnson",
 			}
-			tb.Fill(context.Background(), gobucket.ImmidiateTask, fmt.Sprintf("process::%d", proc), data, new(sampleExecutor))
+			tb.Fill(context.Background(), gobucket.ImmidiateTask, fmt.Sprintf("process::%d", proc), data)
 		}(i)
 	}
 	wg.Wait()
@@ -64,11 +64,11 @@ func doRequest() ([]byte, error) {
 }
 
 func (se *sampleExecutor) OnExecute(ctx context.Context, id string, data interface{}) error {
-	_, err := doRequest()
+	bytes, err := doRequest()
 	if err != nil {
 		return err
 	}
-	log.Println("ON EXECUTE: response done")
+	log.Println("ON EXECUTE: response done", string(bytes))
 	return nil
 }
 

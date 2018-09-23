@@ -10,28 +10,10 @@ taskBucket := gobucket.NewTaskBucket(&gobucket.BucketConfig{
 		MaxBucket: 1024,
 		Verbose:   true,
         	RunAfter:  time.Second
-})
+}, new(sampleExecutor))
 ```
 
 This is the simple implementation for creating a `taskBucket` the task bucket will holds the job inside the memory as a map of task with a id (string) as an identifier. 
-
-The task inside the bucket will be executed right away, so it is expected to not depend for each other. Each task will have its own life-span which will be removed by itself when it happens. This is the simple way to add the task to the bucket:
-
-```
-data := struct {
-	ID   int    `json:"id"`
-	Name string `json:"name"`
-}{
-    	ID:   1,
-	Name: "Johnson",
-}
-taskBucket.Fill(context.Background(), gobucket.ImmidiateTask, fmt.Sprintf("process::%d", proc), data, new(sampleExecutor))
-```
-
-At the moment, there is 2 type of task type:
-1. Immidiate task: This is represented by `gobucket.ImmidiateTask`. This task will be executed right away, after being scheduled.
-2. Time bomb task: This is represented by `gobucket.TimeBombTask`. This task will wait until the expected time before being executed using config `RunAfter`. Please be notified that the `LifeSpan` should be `>` than `RunAfter` so it can work without any problem.
-
 
 `sampleExecutor` represent an executor, a core of single task job:
 
@@ -56,6 +38,23 @@ func (se *sampleExecutor) OnExecuteError(ctx context.Context, id string, data in
 	return nil
 }
 ```
+
+The task inside the bucket will be executed right away, so it is expected to not depend for each other. Each task will have its own life-span which will be removed by itself when it happens. This is the simple way to add the task to the bucket:
+
+```
+data := struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}{
+    	ID:   1,
+	Name: "Johnson",
+}
+taskBucket.Fill(context.Background(), gobucket.ImmidiateTask, fmt.Sprintf("process::%d", proc), data)
+```
+
+At the moment, there is 2 type of task type:
+1. Immidiate task: This is represented by `gobucket.ImmidiateTask`. This task will be executed right away, after being scheduled.
+2. Time bomb task: This is represented by `gobucket.TimeBombTask`. This task will wait until the expected time before being executed using config `RunAfter`. Please be notified that the `LifeSpan` should be `>` than `RunAfter` so it can work without any problem.
 
 To remove the task from the bucket, it can use
 ```

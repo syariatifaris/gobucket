@@ -32,7 +32,7 @@ type BucketConfig struct {
 }
 
 type task interface {
-	run(ctx context.Context)
+	run(ctx context.Context, e Executor)
 	drain(ctx context.Context, quitting bool) error
 }
 
@@ -46,7 +46,6 @@ type baseTask struct {
 
 type taskImpl struct {
 	*bucket
-	Executor
 	*baseTask
 	runAfter time.Duration
 }
@@ -59,14 +58,13 @@ type bucket struct {
 	data         interface{}
 }
 
-func newTask(taskType TaskType, id string, cfg *BucketConfig, e Executor, data interface{}, tb TaskBucket) task {
+func newTask(taskType TaskType, id string, cfg *BucketConfig, data interface{}, tb TaskBucket) task {
 	return &taskImpl{
 		bucket: &bucket{
 			id:       id,
 			lifeSpan: cfg.LifeSpan,
 			data:     data,
 		},
-		Executor: e,
 		baseTask: &baseTask{
 			verbose:    cfg.Verbose,
 			tb:         tb,
@@ -77,7 +75,7 @@ func newTask(taskType TaskType, id string, cfg *BucketConfig, e Executor, data i
 	}
 }
 
-func (t *taskImpl) run(ctx context.Context) {
+func (t *taskImpl) run(ctx context.Context, e Executor) {
 	rctx, cancel := context.WithTimeout(ctx, t.lifeSpan)
 	defer cancel()
 	var shouldCleanup bool
@@ -89,7 +87,7 @@ func (t *taskImpl) run(ctx context.Context) {
 			time.Sleep(t.runAfter)
 		}
 		if !t.baseTask.isQuit {
-			t.onExecuteErr = t.Executor.OnExecute(rctx, t.id, t.data)
+			t.onExecuteErr = e.OnExecute(rctx, t.id, t.data)
 		}
 		finished <- true
 		close(finished)
@@ -98,7 +96,7 @@ func (t *taskImpl) run(ctx context.Context) {
 	case <-rctx.Done():
 		t.log(t.id, "context deadline exceeded after ", t.lifeSpan.Seconds(), " second")
 		t.taskErr = errors.New("context deadline exceeded")
-		if err := t.OnTaskExhausted(rctx, t.id, t.data); err != nil {
+		if err := e.OnTaskExhausted(rctx, t.id, t.data); err != nil {
 			t.taskErr = t.err(errOnTaskExhausted, err)
 		}
 		shouldCleanup = true
@@ -107,12 +105,12 @@ func (t *taskImpl) run(ctx context.Context) {
 		if t.onExecuteErr != nil {
 			t.log(t.id, "executed with error=", t.onExecuteErr.Error(), " run on error event")
 			t.taskErr = t.err(errOnExecute, t.onExecuteErr)
-			if err := t.OnExecuteError(rctx, t.id, t.data, t.taskErr); err != nil {
+			if err := e.OnExecuteError(rctx, t.id, t.data, t.taskErr); err != nil {
 				t.taskErr = t.err(errOnExecuteErr, err)
 			}
 		} else {
 			t.log(t.id, "run on finished event")
-			if err := t.OnFinish(rctx, t.id, t.data); err != nil {
+			if err := e.OnFinish(rctx, t.id, t.data); err != nil {
 				t.taskErr = t.err(errOnFinish, err)
 			}
 		}

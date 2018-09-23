@@ -9,7 +9,7 @@ taskBucket := gobucket.NewTaskBucket(&gobucket.BucketConfig{
 		LifeSpan:  time.Second * 5,
 		MaxBucket: 1024,
 		Verbose:   true,
-        RunAfter:  time.Second
+        	RunAfter:  time.Second
 })
 ```
 
@@ -22,7 +22,7 @@ data := struct {
 	ID   int    `json:"id"`
 	Name string `json:"name"`
 }{
-    ID:   1,
+    	ID:   1,
 	Name: "Johnson",
 }
 taskBucket.Fill(context.Background(), gobucket.ImmidiateTask, fmt.Sprintf("process::%d", proc), data, new(sampleExecutor))

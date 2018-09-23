@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -12,11 +14,11 @@ import (
 
 func main() {
 	tb := gobucket.NewTaskBucket(&gobucket.BucketConfig{
-		LifeSpan:  time.Second,
+		LifeSpan:  time.Second * 2,
 		MaxBucket: 1024,
 		Verbose:   true,
 	})
-	total := 10
+	total := 1000
 	done := make(chan bool)
 	var wg sync.WaitGroup
 	for i := 0; i < total; i++ {
@@ -40,15 +42,33 @@ func main() {
 	}()
 	select {
 	case <-done:
-		log.Println("all process done")
+		log.Println("all process has been scheduled")
 	}
 	time.Sleep(time.Second * 3)
 }
 
 type sampleExecutor struct{}
 
+func doRequest() ([]byte, error) {
+	rs, err := http.Get("https://api.github.com/users/syariatifaris/repos")
+	// Process response
+	if err != nil {
+		return nil, err
+	}
+	defer rs.Body.Close()
+	bodyBytes, err := ioutil.ReadAll(rs.Body)
+	if err != nil {
+		return nil, err
+	}
+	return bodyBytes, err
+}
+
 func (se *sampleExecutor) OnExecute(ctx context.Context, id string, data interface{}) error {
-	log.Println("ON EXECUTE:", id, "data=", data)
+	_, err := doRequest()
+	if err != nil {
+		return err
+	}
+	log.Println("ON EXECUTE: response done")
 	return nil
 }
 

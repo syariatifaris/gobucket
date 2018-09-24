@@ -38,7 +38,7 @@ func (se *sampleExecutor) OnExecuteError(ctx context.Context, id string, data in
 	return nil
 }
 
-func (se *sampleExecutor) OnPanicOccured(ctx context.Context, id string, data interface{}) error {
+func (se *sampleExecutor) OnPanic(ctx context.Context, id string, data interface{}) error {
 	log.Println("on panic: process id=", id)
 	return nil
 }
@@ -86,7 +86,7 @@ func ....(){
 }
 ```
 
-The `Rescue` will send the signal to each alive task and run the `executor.OnPanicOccured(ctx, id, data)` function.
+The `Rescue` will send the signal to each alive task and run the `executor.OnPanic(ctx, id, data)` function.
 
 ### Development:
 

@@ -100,7 +100,7 @@ func (se *sampleExecutor) OnExecuteError(ctx context.Context, id string, data in
 	return nil
 }
 
-func (se *sampleExecutor) OnPanicOccured(ctx context.Context, id string, data interface{}) error {
+func (se *sampleExecutor) OnPanic(ctx context.Context, id string, data interface{}) error {
 	log.Println("on panic: process id=", id)
 	return nil
 }

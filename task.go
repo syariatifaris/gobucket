@@ -119,7 +119,7 @@ func (t *taskImpl) run(ctx context.Context, e Executor) {
 		}
 		shouldCleanup = true
 	case <-t.baseTask.signalPanic:
-		t.taskErr = e.OnPanicOccured(ctx, t.id, t.data)
+		t.taskErr = e.OnPanic(ctx, t.id, t.data)
 		t.tb.collectPanic(true)
 		shouldCleanup = true
 	case <-t.baseTask.signalQuit:

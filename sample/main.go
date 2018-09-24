@@ -12,12 +12,25 @@ import (
 	"github.com/syariatifaris/gobucket"
 )
 
+func recoverPanic(tb gobucket.TaskBucket) {
+	if r := recover(); r != nil {
+		tb.Rescue(context.Background())
+		fmt.Println("recover from:", r)
+	}
+}
+
 func main() {
+	scheduleTask()
+}
+
+func scheduleTask() {
 	tb := gobucket.NewTaskBucket(&gobucket.BucketConfig{
 		LifeSpan:  time.Second * 2,
 		MaxBucket: 1024,
 		Verbose:   true,
+		RunAfter:  time.Second,
 	}, new(sampleExecutor))
+	defer recoverPanic(tb)
 	total := 10
 	done := make(chan bool)
 	var wg sync.WaitGroup
@@ -32,6 +45,7 @@ func main() {
 				ID:   1,
 				Name: "Johnson",
 			}
+			//cfg.RunAfter will bee ignored
 			tb.Fill(context.Background(), gobucket.ImmidiateTask, fmt.Sprintf("process::%d", proc), data)
 		}(i)
 	}
@@ -64,11 +78,11 @@ func doRequest() ([]byte, error) {
 }
 
 func (se *sampleExecutor) OnExecute(ctx context.Context, id string, data interface{}) error {
-	bytes, err := doRequest()
-	if err != nil {
-		return err
-	}
-	log.Println("ON EXECUTE: response done", string(bytes))
+	// bytes, err := doRequest()
+	// if err != nil {
+	// 	return err
+	// }
+	log.Println("ON EXECUTE: response done")
 	return nil
 }
 
@@ -83,5 +97,10 @@ func (se *sampleExecutor) OnTaskExhausted(ctx context.Context, id string, data i
 
 func (se *sampleExecutor) OnExecuteError(ctx context.Context, id string, data interface{}, onExecuteErr error) error {
 	//log.Println("on execute error: process id=", id, "previous err=", onExecuteErr.Error())
+	return nil
+}
+
+func (se *sampleExecutor) OnPanicOccured(ctx context.Context, id string, data interface{}) error {
+	log.Println("on panic: process id=", id)
 	return nil
 }

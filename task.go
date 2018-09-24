@@ -34,14 +34,16 @@ type BucketConfig struct {
 type task interface {
 	run(ctx context.Context, e Executor)
 	drain(ctx context.Context, quitting bool) error
+	rescue(ctx context.Context) error
 }
 
 type baseTask struct {
-	verbose    bool
-	tb         TaskBucket
-	signalQuit chan bool
-	isQuit     bool
-	taskType   TaskType
+	verbose     bool
+	tb          TaskBucket
+	signalQuit  chan bool
+	isQuit      bool
+	taskType    TaskType
+	signalPanic chan bool
 }
 
 type taskImpl struct {
@@ -66,10 +68,11 @@ func newTask(taskType TaskType, id string, cfg *BucketConfig, data interface{}, 
 			data:     data,
 		},
 		baseTask: &baseTask{
-			verbose:    cfg.Verbose,
-			tb:         tb,
-			signalQuit: make(chan bool),
-			taskType:   taskType,
+			verbose:     cfg.Verbose,
+			tb:          tb,
+			signalQuit:  make(chan bool),
+			signalPanic: make(chan bool),
+			taskType:    taskType,
 		},
 		runAfter: cfg.RunAfter,
 	}
@@ -115,6 +118,10 @@ func (t *taskImpl) run(ctx context.Context, e Executor) {
 			}
 		}
 		shouldCleanup = true
+	case <-t.baseTask.signalPanic:
+		t.taskErr = e.OnPanicOccured(ctx, t.id, t.data)
+		t.tb.collectPanic(true)
+		shouldCleanup = true
 	case <-t.baseTask.signalQuit:
 		t.log(t.id, "signal terminated detected")
 		t.baseTask.isQuit = true
@@ -137,6 +144,11 @@ func (t *taskImpl) drain(ctx context.Context, quitting bool) error {
 		return err
 	}
 	t.log(t.id, fmt.Sprintf("draining task %s, current map length=%d", t.id, t.tb.getMapLength()))
+	return nil
+}
+
+func (t *taskImpl) rescue(ctx context.Context) error {
+	t.signalPanic <- true
 	return nil
 }
 

@@ -11,8 +11,10 @@ import (
 type TaskBucket interface {
 	Fill(ctx context.Context, taskType TaskType, id string, data interface{}) error
 	Drain(ctx context.Context, id string) error
+	Rescue(ctx context.Context) error
 	removeTask(id string) error
 	getMapLength() int
+	collectPanic(panic bool)
 }
 
 //Executor defines a client task definition
@@ -21,14 +23,16 @@ type Executor interface {
 	OnFinish(ctx context.Context, id string, data interface{}) error                           //clean up
 	OnTaskExhausted(ctx context.Context, id string, data interface{}) error                    //context deadline happens
 	OnExecuteError(ctx context.Context, id string, data interface{}, onExecuteErr error) error //error while executing
+	OnPanicOccured(ctx context.Context, id string, data interface{}) error                     //perform something when panic happens
 }
 
 //taskBucketImpl task bucket object holder and methods
 type taskBucketImpl struct {
-	mux      sync.Mutex
-	tasks    map[string]task
-	config   *BucketConfig
-	executor Executor
+	mux       sync.Mutex
+	tasks     map[string]task
+	config    *BucketConfig
+	executor  Executor
+	panicChan chan bool
 }
 
 //NewTaskBucket creates new task bucket
@@ -39,9 +43,10 @@ type taskBucketImpl struct {
 //	task bucket
 func NewTaskBucket(cfg *BucketConfig, executor Executor) TaskBucket {
 	return &taskBucketImpl{
-		tasks:    make(map[string]task, cfg.MaxBucket),
-		config:   cfg,
-		executor: executor,
+		tasks:     make(map[string]task, cfg.MaxBucket),
+		config:    cfg,
+		executor:  executor,
+		panicChan: make(chan bool, cfg.MaxBucket),
 	}
 }
 
@@ -86,6 +91,25 @@ func (tb *taskBucketImpl) Drain(ctx context.Context, id string) error {
 	return fmt.Errorf("task with id %s is not found", id)
 }
 
+func (tb *taskBucketImpl) Rescue(ctx context.Context) error {
+	tb.mux.Lock()
+	isNill := (tb.tasks == nil)
+	tb.mux.Unlock()
+	if isNill {
+		return errors.New("task already nil")
+	}
+	tb.mux.Lock()
+	ln := len(tb.tasks)
+	for _, t := range tb.tasks {
+		go t.rescue(ctx)
+	}
+	for i := 0; i < ln; i++ {
+		<-tb.panicChan
+	}
+	tb.mux.Unlock()
+	return nil
+}
+
 //removeTask remove the task from internal task bucket
 func (tb *taskBucketImpl) removeTask(id string) error {
 	tb.mux.Lock()
@@ -113,4 +137,8 @@ func (tb *taskBucketImpl) getMapLength() int {
 	ln := len(tb.tasks)
 	tb.mux.Unlock()
 	return ln
+}
+
+func (tb *taskBucketImpl) collectPanic(panic bool) {
+	tb.panicChan <- panic
 }

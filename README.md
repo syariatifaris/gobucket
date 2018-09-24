@@ -37,6 +37,11 @@ func (se *sampleExecutor) OnExecuteError(ctx context.Context, id string, data in
 	//log.Println("on execute error: process id=", id, "previous err=", onExecuteErr.Error())
 	return nil
 }
+
+func (se *sampleExecutor) OnPanicOccured(ctx context.Context, id string, data interface{}) error {
+	log.Println("on panic: process id=", id)
+	return nil
+}
 ```
 
 The task inside the bucket will be executed right away, so it is expected to not depend for each other. Each task will have its own life-span which will be removed by itself when it happens. This is the simple way to add the task to the bucket:
@@ -61,6 +66,27 @@ To remove the task from the bucket, it can use
 taskBucket.Drain(context.Background(), id)
 ```
 Drain should be call when the task is not yet exists. It will trigger `signal quit` and remove the task.
+
+### Error Recovery
+
+The executor support event where panic occur. For instance, when panic occur, you need to store the task somewher (i.e: redis as a task pool or pub-sub) to be done later. In that case, it need to rescue all task before the signal is terminated after panic
+
+```
+func RecoverPanic(tb gobucket.TaskBucket) {
+	if r := recover(); r != nil {
+		tb.Rescue(context.Background())
+	}
+}
+
+func ....(){
+	taskBuffer := gobuckert.NewTaskBuff...
+	//here where panic occur, i.e: handler, etc
+	defer RecoverPanic(taskBuffer)
+	//panic happen
+}
+```
+
+The `Rescue` will send the signal to each alive task and run the `executor.OnPanicOccured(ctx, id, data)` function.
 
 ### Development:
 

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"strings"
+	"time"
 
 	"github.com/syariatifaris/gobucket"
 )
@@ -19,6 +20,7 @@ func main() {
 
 	stop := make(chan bool)
 	go handleListen(conn, stop)
+	time.Sleep(time.Second * 1)
 
 	req := &gobucket.Req{
 		Cmd: "REG",
@@ -30,19 +32,27 @@ func main() {
 		return
 	}
 
-	req = &gobucket.Req{
-		Cmd: "PING",
-	}
-	bytes, _ = json.Marshal(req)
-	_, err = fmt.Fprintf(conn, string(bytes)+"\n")
-	if err != nil {
-		log.Println("unable to ping socket", err.Error())
-		return
-	}
+	time.Sleep(time.Second * 1)
+	go handlePing(conn)
 
 	select {
 	case <-stop:
 		return
+	}
+}
+
+func handlePing(conn net.Conn) {
+	for {
+		req := &gobucket.Req{
+			Cmd: "PING",
+		}
+		bytes, _ := json.Marshal(req)
+		_, err := fmt.Fprintf(conn, string(bytes)+"\n")
+		if err != nil {
+			log.Println("unable to ping socket", err.Error())
+			return
+		}
+		time.Sleep(time.Second / 10)
 	}
 }
 

@@ -6,8 +6,8 @@ import (
 	"github.com/syariatifaris/gobucket"
 )
 
-func main(){
-	tcpServer := gobucket.NewTcpServer("6666")
+func main() {
+	tcpServer := gobucket.NewServer("6666", true)
 	errChan := make(chan error)
 	log.Println("running server..")
 	go tcpServer.RunServer(errChan)
@@ -16,4 +16,3 @@ func main(){
 		log.Println("error on server", err.Error())
 	}
 }
-

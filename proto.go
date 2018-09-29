@@ -12,6 +12,7 @@ const (
 	RET  = "RET"
 	KILL = "KILL"
 	PING = "PING"
+	PONG = "PONG"
 )
 
 func doRegister(b *baseServer, mc *tconn, req *Req) error {
@@ -22,13 +23,13 @@ func doRegister(b *baseServer, mc *tconn, req *Req) error {
 		b.regConns[addr] = mc.conn
 		b.debug("connection to", addr, "has been registered")
 		mc.pushSend(&Ret{
-			Cmd: RET,
+			Cmd: REG,
 		})
 		return nil
 	}
 	msg := fmt.Sprintf("connection to %s is already established", addr)
 	mc.pushSend(&Ret{
-		Cmd: RET,
+		Cmd: REG,
 		Err: msg,
 	})
 	return errors.New(msg)
@@ -40,8 +41,7 @@ func doPing(b *baseServer, mc *tconn, req *Req) error {
 	}
 	b.debug(fmt.Sprintf("%s: ping server", mc.addr()))
 	mc.pushSend(&Ret{
-		Cmd:  RET,
-		Data: "ALIVE",
+		Cmd: PONG,
 	})
 	return nil
 }

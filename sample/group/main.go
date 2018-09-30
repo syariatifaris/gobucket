@@ -32,11 +32,12 @@ func main() {
 	peers := []string{
 		"127.0.0.1:6666", //will be excluded
 		"127.0.0.1:6667",
-		//"127.0.0.1:6668",
+		"127.0.0.1:6668",
 	}
 	peers = exclude(*port, peers)
 	bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
 	log.Println("start serving..")
+	bg.Fill(id, "sample", data)
 	bg.StartWork()
 }
 

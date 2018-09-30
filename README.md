@@ -1,6 +1,16 @@
-## GoBucket
+# GoBucket
 
 Gobucket is an easy process background job for Go project. Gobucket keeps the job process in memory, and run it right away, or wait until a certain time has been met. 
+
+## A. Standalone
+
+For standalone purpose, gobucket works as go routine callback framework and queue holder. It simply push the your task into the stack and run it as a go routine right away, according to the configuration.
+The gobucket, will run the event inside the task definition stubs and function, and will act according to the operation. result.
+
+![Image of Standalone Gobucket](assets/img/standalone-bucket.png) 
+
+As it has been shown on image. It also possible to kill/remove the scheduled task. This can be used for several use case. For instance, the gobucket is used as a backup plan when a pub-sub is being delayed. 
+But when it is consumed successfully, the process is invalid, then  we can just kill the process scheduled inside the queue.
 
 ### Usage:
 
@@ -87,6 +97,48 @@ func ....(){
 ```
 
 The `Rescue` will send the signal to each alive task and run the `executor.OnPanic(ctx, id, data)` function.
+
+## B. Shared Task Bucket
+
+For example our app runs on multiple instance. It means each instance has the same task bucket(s) definition. By using shared task bucket we can communicate our task to another instance which has larger 
+task buffer availability. This is very essential to keep the performance and avoid the dropping task when the buffer is full.
+
+![Image of Standalone Gobucket](assets/img/shared-bucket.png)
+
+### Usage:
+
+```$xslt
+tb := gobucket.NewTaskBucket(&gobucket.BucketConfig{
+		LifeSpan:  time.Second * 2,
+		MaxBucket: 1024,
+		Verbose:   true,
+		RunAfter:  time.Second,
+    }, new(sampleExecutor))
+
+group := make(map[string]gobucket.TaskBucket, 0)
+group["sample"] = tb
+peers := []string{
+	"10.0.0.1:6666",
+	"10.0.0.2:6666",
+	"10.0.0.3:6666",
+}
+
+bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
+
+log.Println("start serving..")
+bg.StartWork()
+```
+
+In this implementation, we can define more than task bucket, as each instance may have multiple task bucket running. Then, it is also a mandatory, to list all peers 
+(other app's running instance) which also deploy this implementation.
+
+To send the task to an instance with better capacity, we can do this way:
+
+```$xslt
+bg.Fill(id, "sample", data)
+```
+
+here, **sample** is the name of task group which we defined previously, the data should be in the same conversion for sample task definition. 
 
 ### Development:
 

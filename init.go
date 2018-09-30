@@ -12,12 +12,12 @@ type TaskBucket interface {
 	Fill(ctx context.Context, taskType TaskType, id string, data interface{}) error
 	Drain(ctx context.Context, id string) error
 	Rescue(ctx context.Context) error
-	removeTask(id string) error
-	getMapLength() int
-	collectPanic(panic bool)
+	remove(id string) error
+	length() int
+	panic(panic bool)
 }
 
-//Executor defines a client task definition
+//Executor defines a pclient task definition
 type Executor interface {
 	OnExecute(ctx context.Context, id string, data interface{}) error                          //perform something
 	OnFinish(ctx context.Context, id string, data interface{}) error                           //clean up
@@ -110,8 +110,8 @@ func (tb *taskBucketImpl) Rescue(ctx context.Context) error {
 	return nil
 }
 
-//removeTask remove the task from internal task bucket
-func (tb *taskBucketImpl) removeTask(id string) error {
+//remove removes the task from internal task bucket
+func (tb *taskBucketImpl) remove(id string) error {
 	tb.mux.Lock()
 	isNill := (tb.tasks == nil)
 	tb.mux.Unlock()
@@ -131,14 +131,14 @@ func (tb *taskBucketImpl) removeTask(id string) error {
 	return fmt.Errorf("task with id %s is not exists, unable to remove", id)
 }
 
-//getMapLength gets the actual length of the map
-func (tb *taskBucketImpl) getMapLength() int {
+//length gets the actual length of the map
+func (tb *taskBucketImpl) length() int {
 	tb.mux.Lock()
 	ln := len(tb.tasks)
 	tb.mux.Unlock()
 	return ln
 }
 
-func (tb *taskBucketImpl) collectPanic(panic bool) {
+func (tb *taskBucketImpl) panic(panic bool) {
 	tb.panicChan <- panic
 }

@@ -6,35 +6,36 @@ import (
 	"sync"
 )
 
-type tconn struct {
-	conn     net.Conn
-	address  string
-	sendMux  sync.Mutex
-	sendBuff []*Ret
-	recvMux  sync.Mutex
-	recvBuff []*Req
+type mconn struct {
+	conn    net.Conn
+	address string
+
+	retMux  sync.Mutex
+	retBuff []*Ret
+	reqMux  sync.Mutex
+	reqBuff []*Req
 }
 
-func (m *tconn) close() error {
+func (m *mconn) close() error {
 	return m.conn.Close()
 }
 
-func (m *tconn) read() (string, error) {
+func (m *mconn) read() (string, error) {
 	return bufio.NewReader(m.conn).ReadString('\n')
 }
 
-func (m *tconn) addr() string {
+func (m *mconn) addr() string {
 	return m.address
 }
 
-func (m *tconn) pushRecv(req *Req) {
-	m.recvMux.Lock()
-	defer m.recvMux.Unlock()
-	m.recvBuff = append(m.recvBuff, req)
+func (m *mconn) pushReq(req *Req) {
+	m.reqMux.Lock()
+	defer m.reqMux.Unlock()
+	m.reqBuff = append(m.reqBuff, req)
 }
 
-func (m *tconn) pushSend(ret *Ret) {
-	m.sendMux.Lock()
-	defer m.sendMux.Unlock()
-	m.sendBuff = append(m.sendBuff, ret)
+func (m *mconn) pushRet(ret *Ret) {
+	m.retMux.Lock()
+	defer m.retMux.Unlock()
+	m.retBuff = append(m.retBuff, ret)
 }

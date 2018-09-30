@@ -22,17 +22,17 @@ func main() {
 	go handleListen(conn, stop)
 	time.Sleep(time.Second * 1)
 
-	req := &gobucket.Req{
-		Cmd: "REG",
-	}
-	bytes, _ := json.Marshal(req)
-	_, err = fmt.Fprintf(conn, string(bytes)+"\n")
-	if err != nil {
-		log.Println("unable to send socket", err.Error())
-		return
-	}
-
-	time.Sleep(time.Second * 1)
+	//req := &gobucket.Req{
+	//	Cmd: "REG",
+	//}
+	//bytes, _ := json.Marshal(req)
+	//_, err = fmt.Fprintf(conn, string(bytes)+"\n")
+	//if err != nil {
+	//	log.Println("unable to send socket", err.Error())
+	//	return
+	//}
+	//
+	//time.Sleep(time.Second * 1)
 	go handlePing(conn)
 
 	select {
@@ -41,18 +41,20 @@ func main() {
 	}
 }
 
+func request(conn net.Conn, req *gobucket.Req) {
+	bytes, _ := json.Marshal(req)
+	_, err := fmt.Fprintf(conn, string(bytes)+"\n")
+	if err != nil {
+		log.Println("unable to ping socket", err.Error())
+	}
+}
+
 func handlePing(conn net.Conn) {
 	for {
-		req := &gobucket.Req{
+		request(conn, &gobucket.Req{
 			Cmd: "PING",
-		}
-		bytes, _ := json.Marshal(req)
-		_, err := fmt.Fprintf(conn, string(bytes)+"\n")
-		if err != nil {
-			log.Println("unable to ping socket", err.Error())
-			return
-		}
-		time.Sleep(time.Second / 10)
+		})
+		time.Sleep(time.Second / 5)
 	}
 }
 
@@ -61,7 +63,7 @@ func handleListen(conn net.Conn, stop chan bool) {
 	for {
 		message, err := bufio.NewReader(conn).ReadString('\n')
 		if err != nil {
-			if err.Error() == gobucket.ErrEOF {
+			if err.Error() == gobucket.eof {
 				conn.Close()
 				log.Printf("server %s terminated..\n", conn.RemoteAddr().String())
 				stop <- true
@@ -71,9 +73,17 @@ func handleListen(conn net.Conn, stop chan bool) {
 			continue
 		}
 		log.Println("message from server: ", message)
-		if strings.Contains(strings.Replace(message, "\n", "", -1), "KILL") {
-			return
-			stop <- true
+		if strings.Contains(strings.Replace(message, "\n", "", -1), "UREG") {
+			req := &gobucket.Req{
+				Cmd: "REG",
+			}
+			bytes, _ := json.Marshal(req)
+			_, err = fmt.Fprintf(conn, string(bytes)+"\n")
+			if err != nil {
+				log.Println("unable to send socket", err.Error())
+				return
+			}
+			//stop <- true
 		}
 	}
 }

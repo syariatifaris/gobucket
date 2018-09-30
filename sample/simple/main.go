@@ -1,4 +1,4 @@
-package main
+package simple
 
 import (
 	"context"
@@ -78,10 +78,6 @@ func doRequest() ([]byte, error) {
 }
 
 func (se *sampleExecutor) OnExecute(ctx context.Context, id string, data interface{}) error {
-	// bytes, err := doRequest()
-	// if err != nil {
-	// 	return err
-	// }
 	log.Println("ON EXECUTE: response done")
 	return nil
 }

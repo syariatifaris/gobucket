@@ -120,7 +120,7 @@ func (t *taskImpl) run(ctx context.Context, e Executor) {
 		shouldCleanup = true
 	case <-t.baseTask.signalPanic:
 		t.taskErr = e.OnPanic(ctx, t.id, t.data)
-		t.tb.collectPanic(true)
+		t.tb.panic(true)
 		shouldCleanup = true
 	case <-t.baseTask.signalQuit:
 		t.log(t.id, "signal terminated detected")
@@ -139,11 +139,11 @@ func (t *taskImpl) drain(ctx context.Context, quitting bool) error {
 	if quitting {
 		t.signalQuit <- true
 	}
-	err := t.tb.removeTask(t.id)
+	err := t.tb.remove(t.id)
 	if err != nil {
 		return err
 	}
-	t.log(t.id, fmt.Sprintf("draining task %s, current map length=%d", t.id, t.tb.getMapLength()))
+	t.log(t.id, fmt.Sprintf("draining task %s, current map length=%d", t.id, t.tb.length()))
 	return nil
 }
 

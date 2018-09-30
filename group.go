@@ -3,7 +3,6 @@ package gobucket
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 )
@@ -31,6 +30,7 @@ type TaskBucketGroup interface {
 	GetBucket(name string) TaskBucket
 	StartWork() error
 	StopWork()
+	Fill(pid string, task string, data interface{}) error
 }
 
 type bucketGroup struct {
@@ -63,7 +63,7 @@ func (b *bucketGroup) StopWork() {
 	b.stopDiscover <- true
 }
 
-func (b *bucketGroup) FillNetwork(pid string, task string, data interface{}) error {
+func (b *bucketGroup) Fill(pid string, task string, data interface{}) error {
 	p, err := b.pctrl.best(task)
 	if err != nil {
 		return err
@@ -149,9 +149,9 @@ func (p *peersCtrl) best(task string) (*pclient, error) {
 		}
 		tlen, err := p.count(peer.infs, task)
 		if err != nil {
-			return nil, fmt.Errorf("%s", peer.mc.addr())
+			return nil, err
 		}
-		if blen < tlen {
+		if blen > tlen {
 			best = peer
 			blen = tlen
 		}

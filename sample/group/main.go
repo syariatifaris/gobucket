@@ -32,7 +32,7 @@ func main() {
 	peers := []string{
 		"127.0.0.1:6666", //will be excluded
 		"127.0.0.1:6667",
-		"127.0.0.1:6668",
+		//"127.0.0.1:6668",
 	}
 	peers = exclude(*port, peers)
 	bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
@@ -53,7 +53,7 @@ func exclude(port string, peers []string) []string {
 type sampleExecutor struct{}
 
 func (se *sampleExecutor) OnExecute(ctx context.Context, id string, data interface{}) error {
-	log.Println("ON EXECUTE: response done")
+	log.Println("ON EXECUTE: response done", data)
 	return nil
 }
 

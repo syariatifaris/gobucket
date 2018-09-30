@@ -211,13 +211,15 @@ func (s *tcpServer) resolve(mc *mconn, req *Req) error {
 		return sreg(s.bserver, mc, req)
 	case PING:
 		return sping(s.bserver, mc, req)
+	case TASK:
+		return stask(s.bserver, mc, req)
 	default:
 		return errors.New("unresolved command")
 	}
 }
 
 func (s *tcpServer) remove(conn net.Conn) {
-	if isRegisteredConn(s.bserver, conn) {
+	if isReg(s.bserver, conn) {
 		delete(s.bserver.regConns, conn.RemoteAddr().String())
 	}
 }

@@ -142,7 +142,7 @@ func (p *peersCtrl) best(task string) (*pclient, error) {
 			best = peer
 			l, err := p.count(best.infs, task)
 			if err != nil {
-				return nil, fmt.Errorf("%s", best.mc.addr())
+				return nil, err
 			}
 			blen = l
 			continue

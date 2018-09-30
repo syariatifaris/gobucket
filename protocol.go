@@ -1,6 +1,7 @@
 package gobucket
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -45,7 +46,7 @@ func sreg(b *bserver, mc *mconn, req *Req) error {
 }
 
 func sping(b *bserver, mc *mconn, req *Req) error {
-	if !isRegisteredConn(b, mc.conn) {
+	if !isReg(b, mc.conn) {
 		mc.pushRet(&Ret{
 			Cmd: UREG,
 			Err: fmt.Sprintf("%s has not registered yet", mc.addr()),
@@ -56,6 +57,38 @@ func sping(b *bserver, mc *mconn, req *Req) error {
 	mc.pushRet(&Ret{
 		Cmd:  PONG,
 		Data: string(b.ctrl.info()),
+	})
+	return nil
+}
+
+func stask(b *bserver, mc *mconn, req *Req) error {
+	if !isReg(b, mc.conn) {
+		mc.pushRet(&Ret{
+			Cmd: UREG,
+			Err: fmt.Sprintf("%s has not registered yet", mc.addr()),
+		})
+		return errNotRegistered
+	}
+	b.debug(fmt.Sprintf("server: accept task from %s", mc.addr()))
+	var reqData interface{}
+	err := json.Unmarshal([]byte(req.Data), &reqData)
+	if err != nil {
+		mc.pushRet(&Ret{
+			Cmd: TASK,
+			Err: err.Error(),
+		})
+		return err
+	}
+	err = b.ctrl.get(req.Group).Fill(context.Background(), ImmidiateTask, req.PID, reqData)
+	if err != nil {
+		mc.pushRet(&Ret{
+			Cmd: TASK,
+			Err: err.Error(),
+		})
+		return err
+	}
+	mc.pushRet(&Ret{
+		Cmd: TASK,
 	})
 	return nil
 }
@@ -72,7 +105,7 @@ func cpong(p *pclient, mc *mconn, ret *Ret) error {
 	return nil
 }
 
-func isRegisteredConn(b *bserver, conn net.Conn) bool {
+func isReg(b *bserver, conn net.Conn) bool {
 	b.rcMux.Lock()
 	defer b.rcMux.Unlock()
 	addr := conn.RemoteAddr().String()

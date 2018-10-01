@@ -3,11 +3,10 @@ package gobucket
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"time"
-
-	"github.com/tokopedia/cartapp/errors"
 )
 
 const (

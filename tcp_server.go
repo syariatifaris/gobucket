@@ -2,13 +2,12 @@ package gobucket
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"strings"
 	"sync"
-
-	"github.com/tokopedia/cartapp/errors"
 )
 
 const eof = "EOF"

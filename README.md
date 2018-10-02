@@ -132,11 +132,17 @@ bg.StartWork()
 In this implementation, we can define more than task bucket, as each instance may have multiple task bucket running. Then, it is also a mandatory, to list all peers 
 (other app's running instance) which also deploy this implementation.
 
-To send the task to an instance with better capacity, we can do this way:
+To fill the task using shared bucket, we can use this function directly.
 
 ```$xslt
-bg.Fill(id, "sample", data)
+err := bg.Fill(ctx, id, "sample", data)
 ```
+
+This function will assign the go routine task to local buffer first. If the task buffer is full, then it will uses the information from other peers 
+about their buffer availability. The peer with least buffer availability will be assigned to the task. 
+
+**WARNING**
+It is possible to have the task assigned, but the peer reject it because it is full. TODO: create a callback to notify the failure
 
 here, **sample** is the name of task group which we defined previously, the data should be in the same conversion for sample task definition. 
 

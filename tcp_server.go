@@ -161,7 +161,7 @@ func (s *tcpServer) down(mc *mconn, stopReq chan bool) {
 				if reqs := mc.reqBuff; len(reqs) > 0 {
 					err := s.resolve(mc, reqs[0])
 					if err != nil {
-						s.debug("bserver: unable to resolve protocol", err.Error())
+						s.debug("bserver: resolve err=", err.Error())
 					}
 					mc.reqBuff = append(mc.reqBuff[:0], mc.reqBuff[1:]...)
 				}

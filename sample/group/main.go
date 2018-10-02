@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/syariatifaris/arkeus/core/uuid"
+
 	"github.com/syariatifaris/gobucket"
 )
 
@@ -22,7 +24,7 @@ func init() {
 func main() {
 	tb := gobucket.NewTaskBucket(&gobucket.BucketConfig{
 		LifeSpan:  time.Second * 2,
-		MaxBucket: 1024,
+		MaxBucket: 1,
 		Verbose:   true,
 		RunAfter:  time.Second,
 	}, new(sampleExecutor))
@@ -37,7 +39,17 @@ func main() {
 	peers = exclude(*port, peers)
 	bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
 	log.Println("start serving..")
-	bg.Fill(id, "sample", data)
+	go func() {
+		for {
+			time.Sleep(time.Second / 10)
+			uid, _ := uuid.GetV4UUID()
+			err := bg.Fill(context.Background(), "sample", uid, "its a data")
+			if err != nil {
+				log.Println("main:", err.Error())
+				continue
+			}
+		}
+	}()
 	bg.StartWork()
 }
 
@@ -54,6 +66,7 @@ func exclude(port string, peers []string) []string {
 type sampleExecutor struct{}
 
 func (se *sampleExecutor) OnExecute(ctx context.Context, id string, data interface{}) error {
+	time.Sleep(time.Second)
 	log.Println("ON EXECUTE: response done", data)
 	return nil
 }

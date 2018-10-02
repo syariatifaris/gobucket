@@ -85,7 +85,6 @@ func (t *taskImpl) run(ctx context.Context, e Executor) {
 	finished := make(chan bool)
 	go func() {
 		if t.baseTask.taskType == TimeBombTask {
-			//wait first for timebomb
 			t.log(t.id, "wait for ", t.runAfter.Seconds(), " second")
 			time.Sleep(t.runAfter)
 		}

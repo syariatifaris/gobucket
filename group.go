@@ -1,11 +1,15 @@
 package gobucket
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 )
+
+const max = 9999
 
 func NewTaskBucketGroup(buckets map[string]TaskBucket, peers []string,
 	serverPort string, debug bool) TaskBucketGroup {
@@ -30,7 +34,7 @@ type TaskBucketGroup interface {
 	GetBucket(name string) TaskBucket
 	StartWork() error
 	StopWork()
-	Fill(pid string, task string, data interface{}) error
+	Fill(ctx context.Context, task, pid string, data interface{}) error
 }
 
 type bucketGroup struct {
@@ -63,21 +67,29 @@ func (b *bucketGroup) StopWork() {
 	b.stopDiscover <- true
 }
 
-func (b *bucketGroup) Fill(pid string, task string, data interface{}) error {
-	p, err := b.pctrl.best(task)
-	if err != nil {
+func (b *bucketGroup) Fill(ctx context.Context, task, pid string, data interface{}) error {
+	tb := b.GetBucket(task)
+	if tb != nil {
+		err := tb.Fill(ctx, ImmidiateTask, pid, data)
+		if err != nil && err.Error() == efull {
+			p, err := b.pctrl.best(task)
+			if err != nil {
+				return fmt.Errorf("local buffer full & unable to fill to peer, err=%s", err.Error())
+			}
+			bytes, err := json.Marshal(data)
+			if err != nil {
+				return fmt.Errorf("local buffer full & unable to fill to peer, err=%s", err.Error())
+			}
+			p.mc.pushReq(&Req{
+				Cmd:   TASK,
+				Group: task,
+				PID:   pid,
+				Data:  string(bytes),
+			})
+		}
 		return err
 	}
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		return err
-	}
-	p.mc.pushReq(&Req{
-		Cmd:   TASK,
-		Group: task,
-		Data:  string(bytes),
-	})
-	return nil
+	return fmt.Errorf("unable to find bucket for task=%s", task)
 }
 
 func (b *bucketGroup) discover() {
@@ -138,23 +150,28 @@ func (p *peersCtrl) best(task string) (*pclient, error) {
 	var best *pclient = nil
 	var blen int
 	for _, peer := range p.peers {
-		if best == nil {
-			best = peer
-			l, err := p.count(best.infs, task)
+		if peer.srvup {
+			if best == nil {
+				best = peer
+				l, err := p.count(best.infs, task)
+				if err != nil {
+					return nil, err
+				}
+				blen = l
+				continue
+			}
+			tlen, err := p.count(peer.infs, task)
 			if err != nil {
 				return nil, err
 			}
-			blen = l
-			continue
+			if blen > tlen {
+				best = peer
+				blen = tlen
+			}
 		}
-		tlen, err := p.count(peer.infs, task)
-		if err != nil {
-			return nil, err
-		}
-		if blen > tlen {
-			best = peer
-			blen = tlen
-		}
+	}
+	if best == nil {
+		return nil, errors.New("no peer ready/available")
 	}
 	return best, nil
 }

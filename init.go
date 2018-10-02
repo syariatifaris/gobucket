@@ -4,8 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sync"
 )
+
+const efull = "task buffer exceeded"
 
 //TaskBucket works as a bucket implementation for tasks pool
 type TaskBucket interface {
@@ -58,12 +61,19 @@ func NewTaskBucket(cfg *BucketConfig, executor Executor) TaskBucket {
 //returns:
 //	fill operation error
 func (tb *taskBucketImpl) Fill(ctx context.Context, tt TaskType, id string, data interface{}) error {
+	tb.mux.Lock()
+	_, ok := tb.tasks[id]
+	tb.mux.Unlock()
+	if ok {
+		return fmt.Errorf("task with id=%s exists", id)
+	}
 	var isFull bool
 	tb.mux.Lock()
 	isFull = len(tb.tasks) > tb.config.MaxBucket-1
 	tb.mux.Unlock()
 	if isFull {
-		return fmt.Errorf("unable to fill bucket for task=%s, max=%d", id, tb.config.MaxBucket)
+		tb.log("task_bucket: unable to fill bucket for task=", id, "max=", tb.config.MaxBucket)
+		return errors.New(efull)
 	}
 	//prepare the tax
 	task := newTask(tt, id, tb.config, data, tb)
@@ -141,4 +151,10 @@ func (tb *taskBucketImpl) length() int {
 
 func (tb *taskBucketImpl) panic(panic bool) {
 	tb.panicChan <- panic
+}
+
+func (tb *taskBucketImpl) log(args ...interface{}) {
+	if tb.config.Verbose {
+		log.Println(args)
+	}
 }

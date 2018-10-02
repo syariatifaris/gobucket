@@ -99,7 +99,7 @@ func (p *pclient) down(mc *mconn, stopRet chan bool) {
 				if rets := mc.retBuff; len(rets) > 0 {
 					err := p.resolve(mc, rets[0])
 					if err != nil {
-						p.debug("pclient: unable to resolve protocol", err.Error())
+						p.debug("pclient: resolve err=", err.Error())
 					}
 					mc.retBuff = append(mc.retBuff[:0], mc.retBuff[1:]...)
 				}
@@ -114,6 +114,8 @@ func (p *pclient) resolve(mc *mconn, ret *Ret) error {
 	switch ret.Cmd {
 	case PONG:
 		return cpong(p, mc, ret)
+	case TASK:
+		return ctask(p, mc, ret)
 	default:
 		return errors.New("unresolved command")
 	}

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"time"
 )
@@ -80,14 +81,16 @@ func stask(b *bserver, mc *mconn, req *Req) error {
 	}
 	err = b.ctrl.get(req.Group).Fill(context.Background(), ImmidiateTask, req.PID, reqData)
 	if err != nil {
+		log.Printf("protocol: unable fill from %s err=%s data=%+v\n", mc.addr(), err.Error(), req)
 		mc.pushRet(&Ret{
 			Cmd: TASK,
 			Err: err.Error(),
 		})
-		return err
+		return fmt.Errorf("unable fill from %s err=%s", mc.addr(), err.Error())
 	}
 	mc.pushRet(&Ret{
-		Cmd: TASK,
+		Cmd:  TASK,
+		Data: "success push the task",
 	})
 	return nil
 }
@@ -100,7 +103,16 @@ func cpong(p *pclient, mc *mconn, ret *Ret) error {
 		p.debug("pclient: error on marshaling pong ret data", ret, err.Error())
 		return err
 	}
+	bytes, _ := json.Marshal(p.infs)
+	p.debug("pclient: pong information=", string(bytes))
 	p.infs = infs
+	return nil
+}
+
+func ctask(p *pclient, mc *mconn, ret *Ret) error {
+	p.debug("pclient: accepting task schedule reply from", mc.addr())
+	bytes, _ := json.Marshal(ret)
+	p.debug("pclient: task data=", string(bytes))
 	return nil
 }
 

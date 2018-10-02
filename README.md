@@ -135,7 +135,7 @@ In this implementation, we can define more than task bucket, as each instance ma
 To fill the task using shared bucket, we can use this function directly.
 
 ```$xslt
-err := bg.Fill(ctx, id, "sample", data)
+err := bg.Fill(ctx, "sample", id, data)
 ```
 
 This function will assign the go routine task to local buffer first. If the task buffer is full, then it will uses the information from other peers 

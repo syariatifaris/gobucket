@@ -109,18 +109,18 @@ task buffer availability. This is very essential to keep the performance and avo
 
 ```$xslt
 tb := gobucket.NewTaskBucket(&gobucket.BucketConfig{
-		LifeSpan:  time.Second * 2,
-		MaxBucket: 1024,
-		Verbose:   true,
-		RunAfter:  time.Second,
-    }, new(sampleExecutor))
+    LifeSpan:  time.Second * 2,
+    MaxBucket: 1024,
+    Verbose:   true,
+    RunAfter:  time.Second,
+}, new(sampleExecutor))
 
 group := make(map[string]gobucket.TaskBucket, 0)
 group["sample"] = tb
 peers := []string{
-	"10.0.0.1:6666",
-	"10.0.0.2:6666",
-	"10.0.0.3:6666",
+    "10.0.0.1:6666",
+    "10.0.0.2:6666",
+    "10.0.0.3:6666",
 }
 
 bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
@@ -139,12 +139,23 @@ err := bg.Fill(ctx, "sample", id, data)
 ```
 
 This function will assign the go routine task to local buffer first. If the task buffer is full, then it will uses the information from other peers 
-about their buffer availability. The peer with least buffer availability will be assigned to the task. 
+about their buffer availability. The peer with least buffer availability will be assigned to the task. Here, **sample** is the name of task group 
+which we defined previously, the data should be in the same conversion for sample task definition. 
 
 **WARNING**
-It is possible to have the task assigned, but the peer reject it because it is full. TODO: create a callback to notify the failure
+It is possible to have the task assigned, but the peer reject it because it is full. To handle when the peer return error while pushing the requested task, we 
+need to define the callback itself
 
-here, **sample** is the name of task group which we defined previously, the data should be in the same conversion for sample task definition. 
+```$xslt
+bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
+bg.SetOnPeerScheduleFailed(onPeerScheduleFailed)
+```
+
+```$xslt
+func onPeerScheduleFailed(server, task, id, err string) {
+    log.Printf("network_task_failed: server=%s task=%s id=%s err=%s\n", server, task, id, err)
+}
+```
 
 ### Development:
 

@@ -22,9 +22,11 @@ type Req struct {
 }
 
 type Ret struct {
-	Cmd  string `json:"cmd"`
-	Data string `json:"data,omitempty"`
-	Err  string `json:"err,omitempty"`
+	Cmd   string `json:"cmd"`
+	PID   string `json:"pid"`
+	Group string `json:"group"`
+	Data  string `json:"data,omitempty"`
+	Err   string `json:"err,omitempty"`
 }
 
 func newServer(port string, debug bool, ctrl *bucketsCtrl, members []string) server {

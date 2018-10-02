@@ -34,6 +34,7 @@ type TaskBucketGroup interface {
 	GetBucket(name string) TaskBucket
 	StartWork() error
 	StopWork()
+	SetOnPeerScheduleFailed(f OnPeerScheduleFailed)
 	Fill(ctx context.Context, task, pid string, data interface{}) error
 }
 
@@ -90,6 +91,12 @@ func (b *bucketGroup) Fill(ctx context.Context, task, pid string, data interface
 		return err
 	}
 	return fmt.Errorf("unable to find bucket for task=%s", task)
+}
+
+func (b *bucketGroup) SetOnPeerScheduleFailed(fail OnPeerScheduleFailed) {
+	for _, peer := range b.pctrl.peers {
+		peer.fail = fail
+	}
 }
 
 func (b *bucketGroup) discover() {

@@ -38,6 +38,8 @@ func main() {
 	}
 	peers = exclude(*port, peers)
 	bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
+	bg.SetOnPeerScheduleFailed(onPeerScheduleFailed)
+
 	log.Println("start serving..")
 	go func() {
 		for {
@@ -86,4 +88,8 @@ func (se *sampleExecutor) OnExecuteError(ctx context.Context, id string, data in
 func (se *sampleExecutor) OnPanic(ctx context.Context, id string, data interface{}) error {
 	log.Println("on panic: process id=", id)
 	return nil
+}
+
+func onPeerScheduleFailed(server, task, id, err string) {
+	log.Printf("network_task_failed: server=%s task=%s id=%s err=%s\n", server, task, id, err)
 }

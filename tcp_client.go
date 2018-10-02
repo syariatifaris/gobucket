@@ -9,12 +9,15 @@ import (
 	"sync"
 )
 
+type OnPeerScheduleFailed func(server, task, id, err string)
+
 type pclient struct {
 	mux   sync.Mutex
 	mc    *mconn
 	srvup bool
 	dbg   bool
 	infs  []*TaskInfo
+	fail  OnPeerScheduleFailed
 }
 
 func (p *pclient) dial(addr string) error {

@@ -74,8 +74,10 @@ func stask(b *bserver, mc *mconn, req *Req) error {
 	err := json.Unmarshal([]byte(req.Data), &reqData)
 	if err != nil {
 		mc.pushRet(&Ret{
-			Cmd: TASK,
-			Err: err.Error(),
+			Cmd:   TASK,
+			PID:   req.PID,
+			Group: req.Group,
+			Err:   err.Error(),
 		})
 		return err
 	}
@@ -83,14 +85,18 @@ func stask(b *bserver, mc *mconn, req *Req) error {
 	if err != nil {
 		log.Printf("protocol: unable fill from %s err=%s data=%+v\n", mc.addr(), err.Error(), req)
 		mc.pushRet(&Ret{
-			Cmd: TASK,
-			Err: err.Error(),
+			Cmd:   TASK,
+			PID:   req.PID,
+			Group: req.Group,
+			Err:   err.Error(),
 		})
 		return fmt.Errorf("unable fill from %s err=%s", mc.addr(), err.Error())
 	}
 	mc.pushRet(&Ret{
-		Cmd:  TASK,
-		Data: "success push the task",
+		Cmd:   TASK,
+		PID:   req.PID,
+		Group: req.Group,
+		Data:  "success push the task",
 	})
 	return nil
 }
@@ -113,6 +119,9 @@ func ctask(p *pclient, mc *mconn, ret *Ret) error {
 	p.debug("pclient: accepting task schedule reply from", mc.addr())
 	bytes, _ := json.Marshal(ret)
 	p.debug("pclient: task data=", string(bytes))
+	if p.fail != nil {
+		go p.fail(mc.addr(), ret.Group, ret.PID, ret.Err)
+	}
 	return nil
 }
 

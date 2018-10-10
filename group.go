@@ -39,11 +39,10 @@ type TaskBucketGroup interface {
 }
 
 type bucketGroup struct {
-	server       server
-	bctrl        *bucketsCtrl
-	pctrl        *peersCtrl
-	stopServer   chan bool
-	stopDiscover chan bool
+	server     server
+	bctrl      *bucketsCtrl
+	pctrl      *peersCtrl
+	stopServer chan bool
 }
 
 func (b *bucketGroup) GetBucket(name string) TaskBucket {
@@ -51,21 +50,23 @@ func (b *bucketGroup) GetBucket(name string) TaskBucket {
 }
 
 func (b *bucketGroup) StartWork() error {
-	go b.discover()
+	stop := make(chan bool)
+	go b.discover(stop)
 
 	errChan := make(chan error)
 	go b.server.run(errChan)
 	select {
 	case err := <-errChan:
+		stop <- true
 		return err
 	case <-b.stopServer:
+		stop <- true
 		return errors.New("bserver signaled to stop")
 	}
 }
 
 func (b *bucketGroup) StopWork() {
 	b.stopServer <- true
-	b.stopDiscover <- true
 }
 
 func (b *bucketGroup) Fill(ctx context.Context, task, pid string, data interface{}) error {
@@ -99,10 +100,10 @@ func (b *bucketGroup) SetOnPeerScheduleFailed(fail OnPeerScheduleFailed) {
 	}
 }
 
-func (b *bucketGroup) discover() {
+func (b *bucketGroup) discover(stop chan bool) {
 	for {
 		select {
-		case <-b.stopDiscover:
+		case <-stop:
 			return
 		default:
 			b.pctrl.dials()

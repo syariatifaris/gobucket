@@ -103,13 +103,13 @@ func (b *bucketGroup) SetOnPeerScheduleFailed(fail OnPeerScheduleFailed) {
 }
 
 func (b *bucketGroup) discover(stop chan bool) {
+	tickChan := time.NewTicker(b.interval).C
 	for {
 		select {
 		case <-stop:
 			return
-		default:
+		case <-tickChan:
 			b.pctrl.dials()
-			time.Sleep(b.interval)
 		}
 	}
 }
@@ -137,15 +137,30 @@ func (p *peersCtrl) dials() {
 	defer p.mux.Unlock()
 	for addr, peer := range p.peers {
 		if !peer.srvup {
-			err := peer.dial(addr)
-			if err != nil {
-				peer.debug("pclient: unable to dial", addr, "err:", err.Error())
+			finish := make(chan bool)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second/2)
+			defer cancel()
+			go func(p *pclient, a string) {
+				err := p.dial(a)
+				if err != nil {
+					p.debug("pclient: unable to dial", a, "err:", err.Error())
+					finish <- true
+					close(finish)
+					return
+				}
+				p.debug("pclient: dial success, ready to up register to", a, "..")
+				p.mc.pushReq(&Req{
+					Cmd: REG,
+				})
+				finish <- true
+				close(finish)
+			}(peer, addr)
+			select {
+			case <-ctx.Done():
+				peer.debug("pclient: unable to dial context deadline")
+			case <-finish:
 				continue
 			}
-			peer.debug("pclient: dial success, ready to up register to", addr, "..")
-			peer.mc.pushReq(&Req{
-				Cmd: REG,
-			})
 			continue
 		}
 		peer.mc.pushReq(&Req{

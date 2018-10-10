@@ -37,7 +37,7 @@ func main() {
 		"127.0.0.1:6668",
 	}
 	peers = exclude(*port, peers)
-	bg := gobucket.NewTaskBucketGroup(group, peers, *port, *debug)
+	bg := gobucket.NewTaskBucketGroup(group, peers, *port, time.Second*7, *debug)
 	bg.SetOnPeerScheduleFailed(onPeerScheduleFailed)
 
 	log.Println("start serving..")

@@ -12,7 +12,7 @@ import (
 const max = 9999
 
 func NewTaskBucketGroup(buckets map[string]TaskBucket, peers []string,
-	serverPort string, debug bool) TaskBucketGroup {
+	serverPort string, pingInterval time.Duration, debug bool) TaskBucketGroup {
 	ctrl := &bucketsCtrl{
 		tbs: buckets,
 	}
@@ -27,6 +27,7 @@ func NewTaskBucketGroup(buckets map[string]TaskBucket, peers []string,
 		pctrl:      pctrl,
 		server:     newServer(serverPort, debug, ctrl, peers),
 		stopServer: make(chan bool),
+		interval:   pingInterval,
 	}
 }
 
@@ -43,6 +44,7 @@ type bucketGroup struct {
 	bctrl      *bucketsCtrl
 	pctrl      *peersCtrl
 	stopServer chan bool
+	interval   time.Duration
 }
 
 func (b *bucketGroup) GetBucket(name string) TaskBucket {
@@ -107,7 +109,7 @@ func (b *bucketGroup) discover(stop chan bool) {
 			return
 		default:
 			b.pctrl.dials()
-			time.Sleep(time.Second / 10)
+			time.Sleep(b.interval)
 		}
 	}
 }
